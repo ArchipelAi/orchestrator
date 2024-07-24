@@ -36,7 +36,7 @@ async def plan_step(state: PlanExecuteState):
         raise Exception(ve) from ve
 
 
-async def main():
+async def run_as_main():
     test_state = PlanExecuteState(
         input='What country whon the European Championship in soccer in 2014?',
         plan=None,
@@ -47,5 +47,9 @@ async def main():
     print(test_return)
 
 
+def main():
+    asyncio.run(run_as_main())
+
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
