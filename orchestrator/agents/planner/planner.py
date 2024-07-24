@@ -1,44 +1,12 @@
 import asyncio
-from typing import List, Optional
+from dataclasses import replace
 
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic.v1 import BaseModel, Field
+from pydantic.v1 import ValidationError
 
-from orchestrator.models.models import plannerModel
-
-
-class PlanEntry(BaseModel):
-    step: str
-    sub_steps: Optional['PlanEntry']
-
-
-class PastSteps(BaseModel):
-    step: str
-    solution: str
-
-
-class PlanExecuteState(BaseModel):
-    input: str
-    plan: List[PlanEntry]
-    past_steps: List[PastSteps]
-    response: Optional[str]
-
-
-class Plan(BaseModel):
-    """Plan to follow in future"""
-
-    steps: List[str] = Field(
-        description='different steps to follow, should be in sorted order'
-    )
-
-
-class PlanFunction(BaseModel):
-    """This tool is used to plan the steps to follow."""
-
-    name: str = 'plan'
-    description: str = 'This tool is used to plan the steps to follow'
-    parameters: Plan
-
+from orchestrator.models.models import planner_model
+from orchestrator.types.plan import Plan
+from orchestrator.types.plan_execute_state import PlanEntry, PlanExecuteState
 
 planner_prompt = ChatPromptTemplate.from_messages(
     [
@@ -52,27 +20,30 @@ The result of the final step should be the final answer. Make sure that each ste
     ]
 )
 
-model = plannerModel.with_structured_output(PlanFunction)
+
+model = planner_model.with_structured_output(schema=Plan, include_raw=False)
 
 planner_chain = planner_prompt | model
 
 
-# async def plan_step(state: PlanExecuteState):
-#     response = await planner_chain.ainvoke({'objective': state.input})
-#     plan = Plan(**response)  # type: ignore
-#     mapped_plan = [PlanEntry(step=step, sub_steps=None) for step in plan.steps]
-#     return {'plan': mapped_plan}
-async def plan_step(state: str):
-    response = await planner_chain.ainvoke({'objective': state})
-    plan = Plan(**response)  # type: ignore
-    mapped_plan = [PlanEntry(step=step, sub_steps=None) for step in plan.steps]
-    return {'plan': mapped_plan}
+async def plan_step(state: PlanExecuteState):
+    response = await planner_chain.ainvoke({'objective': state.input})
+    try:
+        plan = Plan.validate(response)
+        plan_entry_array = [PlanEntry(step=step, sub_steps=None) for step in plan.steps]
+        return replace(state, plan=plan_entry_array)
+    except ValidationError as ve:
+        raise Exception(ve) from ve
 
 
 async def main():
-    test_return = await plan_step(
-        'What country whon the European Championship in soccer in 2014?'
+    test_state = PlanExecuteState(
+        input='What country whon the European Championship in soccer in 2014?',
+        plan=None,
+        past_steps=None,
+        response=None,
     )
+    test_return = await plan_step(test_state)
     print(test_return)
 
 

@@ -1,7 +1,6 @@
 from langchain_openai import ChatOpenAI
 
-OPENAI_MODEL = 'gpt-4o'
+OPENAI_MODEL = 'gpt-4o-mini'
 
-ChatOpenAI
-
-plannerModel = ChatOpenAI(model=OPENAI_MODEL, temperature=0)
+planner_model = ChatOpenAI(model=OPENAI_MODEL, temperature=0)
+executor_model = ChatOpenAI(model=OPENAI_MODEL, temperature=0)
