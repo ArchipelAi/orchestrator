@@ -1,4 +1,5 @@
 # Orchestrator
+This orchestrator is some wild multi agent stuff... Oo!
 
 ## How to install the project
 1. clone the repo locally
