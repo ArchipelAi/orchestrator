@@ -2,7 +2,7 @@
 
 # Initialize the OpenAI client
 openai:
-  api_key: ''
+  api_key: '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'
   
 # Initialize the Tavily client
 tavily:

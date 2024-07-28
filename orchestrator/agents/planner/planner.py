@@ -5,10 +5,12 @@ from dataclasses import replace
 
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic.v1 import ValidationError
-
+import os
 from orchestrator.models.models import planner_model
 from orchestrator.models.sequence_planner import SequencePlanner
 from orchestrator.models.solution_agent import SolutionAgent
+from orchestrator.models.variable_name_tracker import VariableNameTracker
+
 from orchestrator.types.plan import Plan
 from orchestrator.types.plan_execute_state import PlanEntry, PlanExecuteState
 
@@ -24,7 +26,6 @@ The result of the final step should be the final answer. Make sure that each ste
     ]
 )
 
-
 model = planner_model.with_structured_output(schema=Plan, include_raw=False)
 
 planner_chain = planner_prompt | model
@@ -32,22 +33,23 @@ planner_chain = planner_prompt | model
 
 async def plan_step(state: PlanExecuteState):
     planner = SequencePlanner(
-        n_models=1, system_task=state.input, output_schema=Plan, model='gpt-4o-mini'
+        n_models=1, system_task=state.input, output_schema=Plan, model='gpt-3.5-turbo'
     )
     response = await planner.agent_runnable.ainvoke(
         {'agent_scratchpad': '', 'n_models': 1, 'system_task': state.input}
     )
     try:
         plan: Plan = Plan.validate(response)
-        print(plan)
+
         solution_agent = SolutionAgent(
             n_models=1,
             model='gpt-4o-mini',
         )
-        solution = await solution_agent.agent_runnable.ainvoke(
+
+        solution = await solution_agent.ainvoke(
             {'agent_scratchpad': '', 'n_models': 1, 'task_step': plan.message[0]}
         )
-        print(solution)
+        #print(solution)
         plan_entry_array = [
             PlanEntry(step=step, sub_steps=None) for step in plan.message
         ]

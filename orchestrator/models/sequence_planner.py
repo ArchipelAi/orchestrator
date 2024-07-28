@@ -2,9 +2,8 @@ from typing import Type
 
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai import ChatOpenAI
-
+import json
 from orchestrator.types.plan import Plan
-
 
 class SequencePlanner:
     # Define Sequence Planner Context
@@ -30,7 +29,7 @@ class SequencePlanner:
         top_p: float = 0.1,
         agent_scratchpad: str = '',
     ):
-        self.llm = ChatOpenAI(model=model, temperature=temperature, top_p=top_p)  # type: ignore
+        self.llm = ChatOpenAI(model=model, temperature=temperature, model_kwargs={"top_p": top_p})  # type: ignore
         self.n_models = n_models
         self.agent_scratchpad = agent_scratchpad
         self.prompt = PromptTemplate(
@@ -41,36 +40,13 @@ class SequencePlanner:
         )
         self.agent_runnable = self.prompt | self.model
 
-        # def plan(self, n_models, system_task, agent_scratchpad=''):
-        # inputs = {
-        #     'chat_history': [],  # Initial chat history
-        #     'intermediate_steps': [],  # Initialize with an empty list
-        #     'agent_scratchpad': agent_scratchpad,  # Initial value for agent_scratchpad
-        #     'n_models': n_models,  # Number of models in the multi-agent system
-        #     'system_task': system_task,
-        # }
-        # try:
-        #     # Invoke the agent with the inputs
-        #     response = self.agent_runnable.invoke(inputs)
-        #     # print(response)
-        #     # Extract the JSON content from the return_values attribute of the AgentFinish object
-        #     response_json_str = response.return_values['output']
+        #debug
+        print("Model config:", json.dumps(self.model, indent=2, default=str))
+        print("Prompt template:", self.prompt.template)
+        print("Output schema:", output_schema.schema())
 
-        #     # Clean the JSON string by removing the code block markers
-        #     cleaned_json_str = response_json_str.strip('```json\n').strip('\n```')
-
-        #     # Parse the cleaned JSON string
-        #     response_dict = json.loads(cleaned_json_str)
-        #     # Extract the list of tasks dynamically
-        #     tasks_breakdown = None
-        #     for value in response_dict.values():
-        #         if isinstance(value, list) and all(
-        #             isinstance(item, str) for item in value
-        #         ):
-        #             tasks_breakdown = value
-        #             break
-        # except Exception as e:
-        #     print(f'Error during plan execution: {e}')
-        #     return None
-
-        # return tasks_breakdown
+    async def agent_runnable_debug(self, *args, **kwargs):
+        print("agent_runnable input:", json.dumps(kwargs, indent=2, default=str))
+        result = await self.agent_runnable.ainvoke(*args, **kwargs)
+        print("agent_runnable output:", json.dumps(result, indent=2, default=str))
+        return result

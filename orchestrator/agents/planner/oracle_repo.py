@@ -6,7 +6,7 @@
 import time
 import json
 import openai
-import oracle_repo as orep
+from orchestrator.agents.planner import oracle_repo as orep
 import importlib
 import torch
 import torch.nn as nn
@@ -221,39 +221,125 @@ def evaluate_environment_complexity(problem_scope, problem_type, num_step, n_mod
 #GENERATE FEATURE VECTOR FUNCTIONS
 
 #Implement Feature Vector
-def generate_feature_vector(act_max_score, ag_rationality, model_type_label, agent_type_label, adaptation_rate, problem_scope_label, problem_type_label, num_step, n_models, num_steps_proposed, ratio_steps_left, error_rate):
-    """
-    Purpose: Generate a feature vector summarizing all variables.
+def generate_feature_vector(
+    response_outputs,
+    problem_type,
+    problem_scope,
+    num_step,
+    n_models,
+    best_response_backup,
+    projected_time_to_finish,
+):
+    # Initialize fitness scores list
+    fitness_scores = []
 
-    """
-    # Aggregate all features into a single vector
-    feature_vector = [
-        act_max_score,
+    # Calculate fitness scores for each response
+    for response in response_outputs:
+        ag_rationality, model_type_label, agent_type_label = orep.evaluate_fitness(
+            response['model_type'], response['agent_type'], problem_type
+        )
+        fitness_scores.append(ag_rationality + len(response['message']))
+
+    # Calculate consensus score
+    consensus_score = orep.calculate_consensus_score(response_outputs)
+
+    # Calculate action maximization scores for each response
+    act_max_scores = []
+    for fitness in fitness_scores:
+        ag_rationality = fitness
+        act_max_score = orep.calculate_act_max_score(ag_rationality, consensus_score)
+        act_max_scores.append(act_max_score)
+
+    # Determine the best response
+    best_response_index = act_max_scores.index(max(act_max_scores))
+    best_response = response_outputs[best_response_index]
+    outputs = {
+        'index': num_step,
+        'model_type': best_response['model_type'],
+        'agent_type': best_response['agent_type'],
+        'act_max_score': max(act_max_scores),
+        'message': best_response['message'],
+    }
+
+    best_response_backup.append(outputs)
+    best_response_body = best_response['message']
+
+    # Evaluate error rate
+    error_rate = orep.evaluate_error_rate(
+        best_response_body, best_response_backup, responses=None, num_step=num_step
+    )
+    if num_step == 0:
+        projected_time_to_finish += len(best_response_body)
+    else:
+        pass
+    # Evaluate environment complexity
+    problem_scope_label, problem_type_label, ratio_steps_left = (
+        orep.evaluate_environment_complexity(
+            problem_scope,
+            problem_type,
+            num_step,
+            n_models,
+            best_response_body,
+            projected_time_to_finish,
+        )
+    )
+
+    # Generate feature vector
+    feature_vector = (
+        max(act_max_scores),
         ag_rationality,
         model_type_label,
         agent_type_label,
-        adaptation_rate,
         problem_scope_label,
         problem_type_label,
         num_step,
         n_models,
-        num_steps_proposed,
+        projected_time_to_finish,
         ratio_steps_left,
-        error_rate
-    ]
-    
-    return feature_vector
+        error_rate,
+    )
 
+    return feature_vector, best_response_body
+
+############
+############ added 26.07.24
+############
+
+
+def update_request_parameters(best_response_body, num_step, response_outputs):
+    """
+    Update the request parameters for the next step.
+
+    Parameters:
+    best_response_body (str): The body of the best response message.
+    num_step (int): The current step number.
+    response_outputs (list): The list of response outputs.
+
+    Returns:
+    tuple: Updated task_step, num_steps_proposed, num_step, response_outputs_backup, response_outputs
+    """
+    task_step = best_response_body[num_step]
+    num_steps_proposed = len(best_response_body)
+    num_step += 1
+    response_outputs_backup.append(response_outputs)
+    response_outputs = []
+
+    return (
+        task_step,
+        num_steps_proposed,
+        num_step,
+        response_outputs_backup,
+        response_outputs,
+    )
+
+
+############
+############
+############
 
 ####
 #AI MODEL ACCESS#
 ####
-
-
-############
-############
-############
-
 
 #OPEN AI ACCESS
 
