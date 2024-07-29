@@ -4,6 +4,7 @@ from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai import ChatOpenAI
 import json
 from orchestrator.types.plan import Plan
+import os
 
 class SequencePlanner:
     # Define Sequence Planner Context
@@ -41,12 +42,12 @@ class SequencePlanner:
         self.agent_runnable = self.prompt | self.model
 
         #debug
-        print("Model config:", json.dumps(self.model, indent=2, default=str))
-        print("Prompt template:", self.prompt.template)
-        print("Output schema:", output_schema.schema())
+        # print("Model config:", json.dumps(self.model, indent=2, default=str))
+        # print("Prompt template:", self.prompt.template)
+        # print("Output schema:", output_schema.schema())
 
     async def agent_runnable_debug(self, *args, **kwargs):
-        print("agent_runnable input:", json.dumps(kwargs, indent=2, default=str))
+        #print("agent_runnable input:", json.dumps(kwargs, indent=2, default=str))
         result = await self.agent_runnable.ainvoke(*args, **kwargs)
-        print("agent_runnable output:", json.dumps(result, indent=2, default=str))
+        #print("agent_runnable output:", json.dumps(result, indent=2, default=str))
         return result

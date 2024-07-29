@@ -154,13 +154,13 @@ def evaluate_fitness(model_type, agent_type, problem_type):
     """
     Future: a parameter "weights" could be added that allows the Observer Instance to slect its own weights for problem solving
     """
-    model_type_label = {"gpt-3.5-turbo": 1, "gpt-4": 2, "gpt-4o": 2, "gemini": 3, "gemini-ultra": 4, "mistral": 5}[model_type]
+    model_type_label = {"gpt-3.5-turbo": 1, "gpt-4": 2, "gpt-4o": 2, "gemini": 3, "gemini-ultra": 4, "mistral": 5, "gpt-4o-mini": 6}[model_type]
     agent_type_label = {"llm": 1, "bot": 2}[agent_type]
-    accuracy_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 88.7, "gemini": 0, "gemini-ultra": 0, "mistral": 0}[model_type] #MMLU scores on accuracy
-    reasoning_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 95.3, "gemini": 0, "gemini-ultra": 0, "mistral": 0}[model_type] #HellaSwag scores on reasoning
-    future_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 83.90, "gemini": 0, "gemini-ultra": 0, "mistral": 0}[model_type] #BBHard score on expected future capabilities
-    coding_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 90.2, "gemini": 0, "gemini-ultra": 0, "mistral": 0}[model_type] #HumanEval scores on coding
-    math_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 76.6, "gemini": 0, "gemini-ultra": 0, "mistral": 0}[model_type] #MATH score on Mathematical reasoning
+    accuracy_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 88.7, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #MMLU scores on accuracy
+    reasoning_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 95.3, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #HellaSwag scores on reasoning
+    future_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 83.90, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #BBHard score on expected future capabilities
+    coding_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 90.2, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #HumanEval scores on coding
+    math_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 76.6, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #MATH score on Mathematical reasoning
     ag_rationality = calculate_ag_rationality(problem_type)
     return ag_rationality, model_type_label, agent_type_label
 
@@ -204,7 +204,9 @@ def evaluate_environment_complexity(problem_scope, problem_type, num_step, n_mod
     if num_steps_proposed == 0:
         num_steps_proposed = count_steps_proposed(response) # ability to plan <p>
     else: num_steps_proposed = num_steps_proposed
-    ratio_steps_left = (num_steps_proposed - num_step) / num_steps_proposed 
+    if num_steps_proposed > 0:
+        ratio_steps_left = (num_steps_proposed - num_step) / num_steps_proposed 
+    else: ratio_steps_left = 0
     return problem_scope_label, problem_type_label, ratio_steps_left
 
 ##add a function to calculate token limit and integrate it for memory analysis
