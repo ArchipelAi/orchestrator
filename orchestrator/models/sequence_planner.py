@@ -14,7 +14,9 @@ class SequencePlanner:
     Provide a first breakdown of tasks in bulletpoints '-' to plan how you would solve the challenge. Your answer should be geared towards solving the task at hand.  
     The current task is {system_task}. Provide .json output as a list of bulletpoints. Do not add anything extra.
 
-    Here is some useful information: {agent_scratchpad}
+    Here is the history of previous solutions: {agent_scratchpad}
+
+    Use this history to inform your plan, ensuring you don't repeat steps that have already been completed.
     """
 
     input_variables = ['agent_scratchpad', 'n_models', 'system_task']

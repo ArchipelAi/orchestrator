@@ -70,7 +70,8 @@ async def planner(state: State) -> State:
         n_models=1, 
         system_task=dict(state)['system_task'],
         output_schema=Plan, 
-        model='gpt-3.5-turbo'
+        model='gpt-3.5-turbo',
+        agent_scratchpad=', '.join(state['solutions_history'])
     )
     #print(">>> STATE >>> :", state, " >>> ", type(state))
     response = await planner.agent_runnable.ainvoke({
@@ -113,7 +114,8 @@ async def run_workflow(input_message: str, n_models_planner: int = 1, n_models_e
         "response_outputs": [],
         "response_outputs_backup": [],
         "num_steps_proposed": 0,
-        "feature_vectors": []  
+        "feature_vectors": [],
+        "solutions_history": []
     }
     
     print("Initial state:", json.dumps(initial_state, cls=CustomJSONEncoder, indent=2))
@@ -148,7 +150,7 @@ async def run_workflow(input_message: str, n_models_planner: int = 1, n_models_e
             #print(traceback.format_exc())
 
 async def run_as_main():
-    await run_workflow("Order a vegetarian pizza in Munich and have it delivered to Arcisstrasse 21, 80331 Munich. A human will pay the delivery person upon arrival.", 
+    await run_workflow("Order a vegetarian pizza in Munich and have it delivered to Arcisstrasse 21, 80331 Munich. A human will pay the delivery person upon arrival.", #Invent rules for a board game with a scoring system on a 1-step scale and play that game until you reach score 5. Respond with 'FINISH' once a player has reached score 5. Do not ever mention the word 'FINISH' unless a player has reached 5 points.
                        n_models_planner=1, n_models_executor=2)
 
 def main():

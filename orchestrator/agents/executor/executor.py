@@ -34,6 +34,8 @@ def debug_print(obj, name):
 
 async def executor(state: Union[tuple, Dict[str, Any], str]) -> Union[tuple, Dict[str, Any], str]:
 
+    model = 'gpt-4o-mini' # define model type
+
     if isinstance(state, str) and state == END:
         return END
 
@@ -48,19 +50,21 @@ async def executor(state: Union[tuple, Dict[str, Any], str]) -> Union[tuple, Dic
     n_models = state['n_models_executor']
     response_outputs = []
     for i in range(n_models):
-        solution_agent = SolutionAgent(n_models=1, model=f'gpt-3.5-turbo')
+        solution_agent = SolutionAgent(n_models=1, model=f'{model}')
         solution = await solution_agent.ainvoke({
-            'agent_scratchpad': '',
+            'agent_scratchpad': ', '.join(state['solutions_history']),
             'n_models': 1,
             'task_step': current_task
         })
         #debug_print(solution, f"solution_{i}")
+
         output = {
-            'model_type': f'gpt-3.5-turbo',
+            'model_type': f'{model}',
             'agent_type': f'llm',
             'message': str(solution)
         }
         response_outputs.append(output)
+
         #debug_print(output, f"output_{i}")
     #debug_print(response_outputs, "response_outputs")
     feature_vector, best_response_body = orep.generate_feature_vector(
@@ -73,6 +77,9 @@ async def executor(state: Union[tuple, Dict[str, Any], str]) -> Union[tuple, Dic
         state['projected_time_to_finish']
     )
     debug_print(feature_vector, "feature_vector")
+    #best_response_body = json.dumps(best_response_body)
+    state['feature_vectors'].append(feature_vector)
+    state['solutions_history'].append(best_response_body)
     #debug_print(best_response_body, "best_response_body")
     updated_state = {
         **state,

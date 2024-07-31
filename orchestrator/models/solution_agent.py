@@ -50,7 +50,9 @@ class SolutionAgent:
     Find the solution to the last system output: {task_step}. Your answer should be geared towards solving the task at hand, provide a "solution:" object containing the designated answer. 
     If you find sub_steps are needed to solve the matter, clearly demarcate the .json object as "steps:" and list each with bulletpoints. 
 
-    Here is some useful information: {agent_scratchpad}
+    Here is the history of previous solutions: {agent_scratchpad}
+
+    Use this history to inform your plan, ensuring you don't repeat steps that have already been completed.
     """
 
     input_variables = ['agent_scratchpad', 'n_models', 'task_step']
@@ -90,7 +92,7 @@ class SolutionAgent:
         #debug_print(response, "SolutionAgent raw response")
 
         response = response.dict()
-        
+
         try:
             result = self.output_parser.parse(response['generations'][0][0]['text'])
             #print(result)
