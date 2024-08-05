@@ -2,20 +2,17 @@
 ############
 ############
 
-#IMPORT REPOSITORIES
-import time
+# IMPORT REPOSITORIES
 import json
-import openai
-from orchestrator.agents.planner import oracle_repo as orep
-import importlib
-import torch
-import torch.nn as nn
-import torch.optim as optim
+import time
+
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+import openai
 from sentence_transformers import SentenceTransformer, util
 
-#A Preload Functions
+from orchestrator.agents.planner import oracle_repo as orep
+
+# A Preload Functions
 
 # def evaluate_error_rate(messages):
 #     """
@@ -32,6 +29,7 @@ from sentence_transformers import SentenceTransformer, util
 #     error_rate = error_count / total_messages if total_messages > 0 else 0
 #     return error_rate
 
+
 def evaluate_error_rate(messages, best_response_backup, responses=None, num_step=None):
     """
     Purpose: Evaluate the error rate of any agent over time.
@@ -45,7 +43,7 @@ def evaluate_error_rate(messages, best_response_backup, responses=None, num_step
     float: Ratio of Errors to Total Messages.
     """
     # Calculate the initial error count based on messages containing "error"
-    error_count = sum(1 for msg in messages if "error" in msg.lower())
+    error_count = sum(1 for msg in messages if 'error' in msg.lower())
 
     # Calculate the consensus score if both responses and num_step are provided
     if responses is not None and num_step is not None:
@@ -66,7 +64,7 @@ def count_steps_proposed(api_response_text):
     """
     Purpose: Counts the number of bullet points in the given text.
     Then passed as an argument into function "evaluate_environment_complexity".
-    
+
     Args:
     llm text output. Currently works for OpenAI API only.
 
@@ -75,20 +73,24 @@ def count_steps_proposed(api_response_text):
     """
     # Define possible bullet point markers
     bullet_markers = ['-', '*', '•']
-    
+
     # If the input is a list of strings, join them into a single string
     if isinstance(api_response_text, list):
         api_response_text = '\n'.join(api_response_text)
-    
+
     # Split the text into lines
     lines = api_response_text.split('\n')
-    
+
     # Count the number of lines that start with a bullet marker
-    bullet_count = sum(1 for line in lines if line.strip().startswith(tuple(bullet_markers)))
-    
+    bullet_count = sum(
+        1 for line in lines if line.strip().startswith(tuple(bullet_markers))
+    )
+
     return bullet_count
 
-#CONSENSUS
+
+# CONSENSUS
+
 
 def calculate_consensus_score(responses):
     """
@@ -99,7 +101,7 @@ def calculate_consensus_score(responses):
     Returns:
     float: consensus score
     """
-    model = SentenceTransformer('paraphrase-MiniLM-L6-v2') #all-MiniLM-L6-v2
+    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # all-MiniLM-L6-v2
     # Extract and combine text data
     text_data = []
     for entry in responses:
@@ -115,28 +117,53 @@ def calculate_consensus_score(responses):
     upper_triangle_indices = np.triu_indices(num_responses, k=1)
 
     consensus_score = similarities[upper_triangle_indices].mean().item()
-    
+
     return consensus_score
+
 
 def calculate_ag_rationality(problem_type):
     """
     Purpose: Calculate rationality fitness of an agent based on the problem type. Is passed as an argument into function evaluate_fitness.
     """
-    accuracy_score = 88.7 #gpt-4o MMLU benchmark
-    reasoning_score = 95.3 #gpt-4o HellaSwag benchmark
-    future_score = 83.90 #gpt-4o BBHard benchmark
-    coding_score = 90.2 #gpt-4o HumanEval benchmark
-    math_score = 76.6 #gpt-4o MATH benchmark
-    if problem_type == "deterministic":
-        ag_rationality = (accuracy_score * 1.5 + reasoning_score * 1.5 + future_score * 1.2 + coding_score + math_score) / 5
-    elif problem_type == "predictive":
-        ag_rationality = (accuracy_score * 1.2 + reasoning_score + future_score + coding_score * 1.5 + math_score * 1.5) / 5
-    elif problem_type == "code_based":
-        ag_rationality = (accuracy_score * 1.2 + reasoning_score * 1.5 + future_score + coding_score * 2 + math_score) / 5
-    elif problem_type == "philosophical":
-        ag_rationality = (accuracy_score * 1.2 + reasoning_score * 1.5 + future_score * 1.5 + coding_score + math_score) / 5
+    accuracy_score = 88.7  # gpt-4o MMLU benchmark
+    reasoning_score = 95.3  # gpt-4o HellaSwag benchmark
+    future_score = 83.90  # gpt-4o BBHard benchmark
+    coding_score = 90.2  # gpt-4o HumanEval benchmark
+    math_score = 76.6  # gpt-4o MATH benchmark
+    if problem_type == 'deterministic':
+        ag_rationality = (
+            accuracy_score * 1.5
+            + reasoning_score * 1.5
+            + future_score * 1.2
+            + coding_score
+            + math_score
+        ) / 5
+    elif problem_type == 'predictive':
+        ag_rationality = (
+            accuracy_score * 1.2
+            + reasoning_score
+            + future_score
+            + coding_score * 1.5
+            + math_score * 1.5
+        ) / 5
+    elif problem_type == 'code_based':
+        ag_rationality = (
+            accuracy_score * 1.2
+            + reasoning_score * 1.5
+            + future_score
+            + coding_score * 2
+            + math_score
+        ) / 5
+    elif problem_type == 'philosophical':
+        ag_rationality = (
+            accuracy_score * 1.2
+            + reasoning_score * 1.5
+            + future_score * 1.5
+            + coding_score
+            + math_score
+        ) / 5
     else:
-        raise ValueError("Invalid problem_type provided")
+        raise ValueError('Invalid problem_type provided')
 
     return ag_rationality
 
@@ -146,47 +173,108 @@ def calculate_ag_rationality(problem_type):
 ############
 
 
-#Benchmark Functions
+# Benchmark Functions
 
-#RATIONALITY
+# RATIONALITY
+
 
 def evaluate_fitness(model_type, agent_type, problem_type):
     """
     Future: a parameter "weights" could be added that allows the Observer Instance to slect its own weights for problem solving
     """
-    model_type_label = {"gpt-3.5-turbo": 1, "gpt-4": 2, "gpt-4o": 2, "gemini": 3, "gemini-ultra": 4, "mistral": 5, "gpt-4o-mini": 6}[model_type]
-    agent_type_label = {"llm": 1, "bot": 2}[agent_type]
-    accuracy_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 88.7, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #MMLU scores on accuracy
-    reasoning_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 95.3, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #HellaSwag scores on reasoning
-    future_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 83.90, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #BBHard score on expected future capabilities
-    coding_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 90.2, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #HumanEval scores on coding
-    math_score = {"gpt-3.5-turbo": 0, "gpt-4": 0, "gpt-4o": 76.6, "gemini": 0, "gemini-ultra": 0, "mistral": 0, "gpt-4o-mini": 0}[model_type] #MATH score on Mathematical reasoning
+    model_type_label = {
+        'gpt-3.5-turbo': 1,
+        'gpt-4': 2,
+        'gpt-4o': 2,
+        'gemini': 3,
+        'gemini-ultra': 4,
+        'mistral': 5,
+        'gpt-4o-mini': 6,
+    }[model_type]
+    agent_type_label = {'llm': 1, 'bot': 2}[agent_type]
+    accuracy_score = {
+        'gpt-3.5-turbo': 0,
+        'gpt-4': 0,
+        'gpt-4o': 88.7,
+        'gemini': 0,
+        'gemini-ultra': 0,
+        'mistral': 0,
+        'gpt-4o-mini': 0,
+    }[model_type]  # MMLU scores on accuracy
+    reasoning_score = {
+        'gpt-3.5-turbo': 0,
+        'gpt-4': 0,
+        'gpt-4o': 95.3,
+        'gemini': 0,
+        'gemini-ultra': 0,
+        'mistral': 0,
+        'gpt-4o-mini': 0,
+    }[model_type]  # HellaSwag scores on reasoning
+    future_score = {
+        'gpt-3.5-turbo': 0,
+        'gpt-4': 0,
+        'gpt-4o': 83.90,
+        'gemini': 0,
+        'gemini-ultra': 0,
+        'mistral': 0,
+        'gpt-4o-mini': 0,
+    }[model_type]  # BBHard score on expected future capabilities
+    coding_score = {
+        'gpt-3.5-turbo': 0,
+        'gpt-4': 0,
+        'gpt-4o': 90.2,
+        'gemini': 0,
+        'gemini-ultra': 0,
+        'mistral': 0,
+        'gpt-4o-mini': 0,
+    }[model_type]  # HumanEval scores on coding
+    math_score = {
+        'gpt-3.5-turbo': 0,
+        'gpt-4': 0,
+        'gpt-4o': 76.6,
+        'gemini': 0,
+        'gemini-ultra': 0,
+        'mistral': 0,
+        'gpt-4o-mini': 0,
+    }[model_type]  # MATH score on Mathematical reasoning
     ag_rationality = calculate_ag_rationality(problem_type)
     return ag_rationality, model_type_label, agent_type_label
 
 
-#ACT MAX SCORE
-def calculate_act_max_score(ag_rationality, consensus_score, weight_adaptation=0.4, weight_consensus=0.3, weight_benchmark=0.3):
-    act_max_score = (weight_consensus * consensus_score) + (weight_benchmark * ag_rationality) # + (weight_adaptation * adaptation_rate) -> define adaptation function
+# ACT MAX SCORE
+def calculate_act_max_score(
+    ag_rationality,
+    consensus_score,
+    weight_adaptation=0.4,
+    weight_consensus=0.3,
+    weight_benchmark=0.3,
+):
+    act_max_score = (weight_consensus * consensus_score) + (
+        weight_benchmark * ag_rationality
+    )  # + (weight_adaptation * adaptation_rate) -> define adaptation function
     return act_max_score
 
 
-#ADAPTATION RATE
-def evaluate_adaptive_behavior(vector_t, vector_t1): #function is a draft not yet complete / functional
+# ADAPTATION RATE
+def evaluate_adaptive_behavior(
+    vector_t, vector_t1
+):  # function is a draft not yet complete / functional
     """
     Evaluates the adaptive behavior by comparing changes in model type between time steps t and t+1.
     """
     act_max_score_t, model_type_t, time_t = vector_t
     act_max_score_t1, model_type_t1, time_t1 = vector_t1
-    
+
     if model_type_t != model_type_t1:
-        adaptation_rate =+ 1
-    
+        adaptation_rate = +1
+
     return adaptation_rate
 
 
-#ENVIRONMENT COMPLEXITY
-def evaluate_environment_complexity(problem_scope, problem_type, num_step, n_models, response, num_steps_proposed):
+# ENVIRONMENT COMPLEXITY
+def evaluate_environment_complexity(
+    problem_scope, problem_type, num_step, n_models, response, num_steps_proposed
+):
     """
     Purpose: Calculates the complexity of the environment at timestep t.
 
@@ -197,21 +285,31 @@ def evaluate_environment_complexity(problem_scope, problem_type, num_step, n_mod
     Args: Manual description of problem completeness - fixed value (env_obs), Manual description of problem's nature - fixed value (env_nat), time, number n of active agents (n_models), response of agent with highest act_max_score (response).
 
     """
-    problem_scope_label = {"open": 1, "closed": 0}[problem_scope] ## observability (complete / partial): complete if closed problem, partial if open problem
-    problem_type_label = {"deterministic": [1,0,0,0], "predictive": [0,1,0,0], "code_based": [0,0,1,0], "philosophical": [0,0,0,1]}[problem_type] # environment effect (deterministic / predictive):
-    num_step = num_step   # timesteps that have passed (ordinal) <p>
-    n_models = n_models # number of agents (n) <p>
+    problem_scope_label = {'open': 1, 'closed': 0}[
+        problem_scope
+    ]  ## observability (complete / partial): complete if closed problem, partial if open problem
+    problem_type_label = {
+        'deterministic': [1, 0, 0, 0],
+        'predictive': [0, 1, 0, 0],
+        'code_based': [0, 0, 1, 0],
+        'philosophical': [0, 0, 0, 1],
+    }[problem_type]  # environment effect (deterministic / predictive):
+    num_step = num_step  # timesteps that have passed (ordinal) <p>
+    n_models = n_models  # number of agents (n) <p>
     if num_steps_proposed == 0:
-        num_steps_proposed = count_steps_proposed(response) # ability to plan <p>
-    else: num_steps_proposed = num_steps_proposed
+        num_steps_proposed = count_steps_proposed(response)  # ability to plan <p>
+    else:
+        num_steps_proposed = num_steps_proposed
     if num_steps_proposed > 0:
-        ratio_steps_left = (num_steps_proposed - num_step) / num_steps_proposed 
-    else: ratio_steps_left = 0
+        ratio_steps_left = (num_steps_proposed - num_step) / num_steps_proposed
+    else:
+        ratio_steps_left = 0
     return problem_scope_label, problem_type_label, ratio_steps_left
+
 
 ##add a function to calculate token limit and integrate it for memory analysis
 ####
-#FUNCTION SPACE#
+# FUNCTION SPACE#
 ####
 
 
@@ -220,9 +318,10 @@ def evaluate_environment_complexity(problem_scope, problem_type, num_step, n_mod
 ############
 
 
-#GENERATE FEATURE VECTOR FUNCTIONS
+# GENERATE FEATURE VECTOR FUNCTIONS
 
-#Implement Feature Vector
+
+# Implement Feature Vector
 def generate_feature_vector(
     response_outputs,
     problem_type,
@@ -303,6 +402,7 @@ def generate_feature_vector(
 
     return feature_vector, best_response_body
 
+
 ############
 ############ added 26.07.24
 ############
@@ -340,12 +440,15 @@ def update_request_parameters(best_response_body, num_step, response_outputs):
 ############
 
 ####
-#AI MODEL ACCESS#
+# AI MODEL ACCESS#
 ####
 
-#OPEN AI ACCESS
+# OPEN AI ACCESS
 
-def openai_request(client, n_models, num_step, system_task, task_step, response, response_outputs):
+
+def openai_request(
+    client, n_models, num_step, system_task, task_step, response, response_outputs
+):
     """
     Starts an OpenAI request sequence to solve system_task.
 
@@ -358,126 +461,177 @@ def openai_request(client, n_models, num_step, system_task, task_step, response,
 
     """
     for i in range(1, n_models + 1):
-        
         try:
-            if num_step == 0: 
+            if num_step == 0:
                 response = client.chat.completions.create(
-                    model="gpt-4o", #set model_type
-                    response_format={ "type": "json_object" },
+                    model='gpt-4o',  # set model_type
+                    response_format={'type': 'json_object'},
                     temperature=0,
-                    top_p = 0.1,
+                    top_p=0.1,
                     messages=[
-                        {"role": "system", "content": "You are one agent in a multi-agent model of {n_models} agents. It is your job to provide constructive responses your team of agents can work with to solve the task at hand. The current task is {system_task}. {num_step} is the number of iterations. You provide output in JSON."},
-                        {"role": "user", "content": """\n\n Provide a first breakdown of tasks in bulletpoints "-" to plan how you would solve the challenge. Your answer should be geared towards solving the task at hand. The current task is {system_task}. 
+                        {
+                            'role': 'system',
+                            'content': 'You are one agent in a multi-agent model of {n_models} agents. It is your job to provide constructive responses your team of agents can work with to solve the task at hand. The current task is {system_task}. {num_step} is the number of iterations. You provide output in JSON.',
+                        },
+                        {
+                            'role': 'user',
+                            'content': """\n\n Provide a first breakdown of tasks in bulletpoints "-" to plan how you would solve the challenge. Your answer should be geared towards solving the task at hand. The current task is {system_task}. 
                         The current step addressed to solve the task is {task_step}.
-                        Provide .json output as a list of bulletpoints. Do not add anything extra.""".format(n_models=n_models, num_step=num_step, system_task=system_task, task_step=task_step, response=response)},
-                    ]
+                        Provide .json output as a list of bulletpoints. Do not add anything extra.""".format(
+                                system_task=system_task,
+                                task_step=task_step,
+                            ),
+                        },
+                    ],
                 )
                 print(response.choices[0].message.content)
                 response_data = {
                     num_step: {
-                        "model_type": "gpt-4o",
-                        "agent_type": "llm",
-                        "message": response.choices[0].message.content
-                        }
+                        'model_type': 'gpt-4o',
+                        'agent_type': 'llm',
+                        'message': response.choices[0].message.content,
                     }
-                #add index to completion_outputs
+                }
+                # add index to completion_outputs
                 response_outputs.append(response_data)
-            
+
             else:
                 response = client.chat.completions.create(
-                    model="gpt-4o", #set model_type
-                    response_format={ "type": "json_object" },
+                    model='gpt-4o',  # set model_type
+                    response_format={'type': 'json_object'},
                     temperature=0,
-                    top_p = 0.1,
+                    top_p=0.1,
                     messages=[
-                        {"role": "system", "content": "You are one agent in a multi-agent model of {n_models} agents. It is your job to provide constructive responses your team of agents can work with to solve the task at hand. The current task is {system_task}. {num_step} is the number of iterations. You provide output in JSON."},
-                        {"role": "user", "content": """\n\n Find the solution to the last system output: {response}. Your answer should be geared towards solving the task at hand, provide a "solution:" object containing the designated answer. If you find sub_steps are needed to solve the matter, clearly demarcate the .json object as "steps:" and list each with bulletpoints. Still provide a solution to the task in your output.
+                        {
+                            'role': 'system',
+                            'content': 'You are one agent in a multi-agent model of {n_models} agents. It is your job to provide constructive responses your team of agents can work with to solve the task at hand. The current task is {system_task}. {num_step} is the number of iterations. You provide output in JSON.',
+                        },
+                        {
+                            'role': 'user',
+                            'content': """\n\n Find the solution to the last system output: {response}. Your answer should be geared towards solving the task at hand, provide a "solution:" object containing the designated answer. If you find sub_steps are needed to solve the matter, clearly demarcate the .json object as "steps:" and list each with bulletpoints. Still provide a solution to the task in your output.
                         The current step addressed to solve the task is {task_step}.
-                        Store your reponse as an object called "message".""".format(n_models=n_models, num_step=num_step, system_task=system_task, task_step=task_step, response=response)},
-                    ]
+                        Store your reponse as an object called "message".""".format(
+                                task_step=task_step,
+                                response=response,
+                            ),
+                        },
+                    ],
                 )
                 print(response.choices[0].message.content)
                 response_data = {
                     num_step: {
-                        "model_type": "gpt-4o",
-                        "agent_type": "llm",
-                        "message": response.choices[0].message.content
-                        }
+                        'model_type': 'gpt-4o',
+                        'agent_type': 'llm',
+                        'message': response.choices[0].message.content,
                     }
-                #add index to completion_outputs
+                }
+                # add index to completion_outputs
                 response_outputs.append(response_data)
-            
+
         except openai.RateLimitError as e:
             print(e)
             retry_time = e.retry_after if hasattr(e, 'retry_after') else 60
-            print(f"Rate limit exceeded. Retrying in {retry_time} seconds...")
+            print(f'Rate limit exceeded. Retrying in {retry_time} seconds...')
             time.sleep(retry_time + 1)
 
         except openai.APIError as e:
             retry_time = e.retry_after if hasattr(e, 'retry_after') else 60
-            print(f"API error occurred. Retrying in {retry_time} seconds...")
+            print(f'API error occurred. Retrying in {retry_time} seconds...')
             time.sleep(retry_time + 1)
 
-        except openai.error.ServiceUnavailableError as e:
+        except openai.error.ServiceUnavailableError:
             retry_time = 30  # Adjust the retry time as needed
-            print(f"Service is unavailable. Retrying in {retry_time} seconds...")
+            print(f'Service is unavailable. Retrying in {retry_time} seconds...')
             time.sleep(retry_time + 1)
 
         except openai.Timeout as e:
-            retry_time = 10 # Adjust the retry time as needed
-            print(f"Request timed out: {e}. Retrying in {retry_time} seconds...")
+            retry_time = 10  # Adjust the retry time as needed
+            print(f'Request timed out: {e}. Retrying in {retry_time} seconds...')
             time.sleep(retry_time + 1)
 
         except OSError as e:
             if isinstance(e, tuple) and len(e) == 2 and isinstance(e[1], OSError):
                 retry_time = 10  # Adjust the retry time as needed
-                print(f"Connection error occurred: {e}. Retrying in {retry_time} seconds...")
+                print(
+                    f'Connection error occurred: {e}. Retrying in {retry_time} seconds...'
+                )
                 time.sleep(retry_time + 1)
-                
+
         # Pause for 1 second to respect rate limits
         time.sleep(1)
 
 
-
-
-def process_steps(response_outputs, best_response_body, num_step, problem_scope, problem_type, n_models, adaptation_rate, num_steps_proposed, sub_layer=0, finished=False):
+def process_steps(
+    response_outputs,
+    best_response_body,
+    num_step,
+    problem_scope,
+    problem_type,
+    n_models,
+    adaptation_rate,
+    num_steps_proposed,
+    sub_layer=0,
+    finished=False,
+):
     bullet_markers = ['-', '*', '•']
     finished = finished
-    
+
     while not finished:
-        feature_vector, response = auto_generate_feature_vector(response_outputs, num_step, problem_scope, problem_type, n_models, adaptation_rate, num_steps_proposed)
+        feature_vector, response = auto_generate_feature_vector(
+            response_outputs,
+            num_step,
+            problem_scope,
+            problem_type,
+            n_models,
+            adaptation_rate,
+            num_steps_proposed,
+        )
         training_data.append(feature_vector)
 
         task_step = best_response_body[num_step]
         num_step += 1
-        
+
         response_outputs_backup.append(response_outputs)
         response_outputs = []
 
-        orep.openai_request(client, n_models, num_step, system_task, task_step, response, response_outputs)
-        #print(response_outputs)
+        orep.openai_request(
+            client,
+            n_models,
+            num_step,
+            system_task,
+            task_step,
+            response,
+            response_outputs,
+        )
+        # print(response_outputs)
 
-        if any("FINISH" in output for output in response_outputs):
+        if any('FINISH' in output for output in response_outputs):
             return True
-        #THIS NEEDS A GLOBAL VARIABLE THAT IS EITHER 1 OR 0 AND PROHIBITS THE ESTABLISHMENT OF DEEPER LOOP LAYERS IF 1.
+        # THIS NEEDS A GLOBAL VARIABLE THAT IS EITHER 1 OR 0 AND PROHIBITS THE ESTABLISHMENT OF DEEPER LOOP LAYERS IF 1.
         # If the response contains sub-steps, process them recursively
         for response in response_outputs:
             response_body = json.loads(response[num_step]['message'])
             if 'steps:' in response_body['message']:
                 sub_steps = []
                 for line in response_body['message'].split('\n'):
-                    if any(line.strip().startswith(marker) for marker in bullet_markers):
+                    if any(
+                        line.strip().startswith(marker) for marker in bullet_markers
+                    ):
                         sub_steps.append(line.strip())
-                
+
                 if sub_steps and sub_layer == 0:
-                    sub_response_body = ", ".join(sub_steps)
-                    if process_steps(response_outputs, sub_response_body, num_step, problem_scope, problem_type, n_models, adaptation_rate, num_steps_proposed, sub_layer + 1):
+                    sub_response_body = ', '.join(sub_steps)
+                    if process_steps(
+                        response_outputs,
+                        sub_response_body,
+                        num_step,
+                        problem_scope,
+                        problem_type,
+                        n_models,
+                        adaptation_rate,
+                        num_steps_proposed,
+                        sub_layer + 1,
+                    ):
                         return True
 
     return False
-
-
-
-
-

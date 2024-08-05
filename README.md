@@ -19,8 +19,12 @@ $ poetry install
 ## How to run the project
 1. create a copy of the .env.example file
 2. rename the copy to .env
-3. change the api key for OPENAI_API_KEY to your key
-4. run to execute a test run for the planner
+3. add dotenv to your local poetry instance
+```bash
+$ poetry self add poetry-dotenv-plugin
+```
+4. change the api key for OPENAI_API_KEY to your key
+5. run to execute a test run for the planner
 ```bash
 $ poetry run planner
 ```
