@@ -1,52 +1,48 @@
-#This is the lang graph implementation of the setup in agents.py
-
 import asyncio
-from dataclasses import replace
+import dataclasses
+import pprint
 
-from langchain_core.prompts import ChatPromptTemplate
-from pydantic.v1 import ValidationError
+from langchain_core.messages import HumanMessage
+from pydantic import ValidationError
 
-from orchestrator.models.models import planner_model
+from orchestrator.models.planner_agent import PlannerAgent
 from orchestrator.types.plan import Plan
-from orchestrator.types.plan_execute_state import PlanEntry, PlanExecuteState
+from orchestrator.types.plan_execute_state import State
 
-planner_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            'system',
-            """For the given objective, come up with a simple step by step plan. \
-This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
-The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.""",
-        ),
-        ('human', '{objective}'),
-    ]
-)
+model = 'gpt-3.5-turbo'
 
 
-model = planner_model.with_structured_output(schema=Plan, include_raw=False)
-
-planner_chain = planner_prompt | model
-
-
-async def plan_step(state: PlanExecuteState):
-    response = await planner_chain.ainvoke({'objective': state.input})
+async def plan_step(state: State) -> State:
+    planner = PlannerAgent(
+        output_schema=Plan,
+        model=model,
+    )
     try:
-        plan = Plan.validate(response)
-        plan_entry_array = [PlanEntry(step=step, sub_steps=None) for step in plan.steps]
-        return replace(state, plan=plan_entry_array)
-    except ValidationError as ve:
-        raise Exception(ve) from ve
+        plan = await planner.ainvoke(
+            output_type=Plan,
+            agent_scratchpad=', '.join(state.solutions_history),
+            n_models=1,
+            system_task=state.system_task,
+        )
+
+        updated_state = dataclasses.replace(state)
+        updated_state.plan = list(plan.message)
+        updated_state.num_steps_proposed = len(plan.message)
+
+        return updated_state
+    except (Exception, ValidationError) as error:
+        raise Exception(error) from error
 
 
 async def run_as_main():
-    test_state = PlanExecuteState(
-        input='What country whon the European Championship in soccer in 2014?',
-        plan=None,
-        past_steps=None,
-        response=None,
+    input_message = (
+        'From which country is the trainer of the Champions League winner 2014?'
     )
-    test_return = await plan_step(test_state)
-    print(test_return)
+    initial_state = State(
+        messages=[HumanMessage(content=input_message)], system_task=input_message
+    )
+    updated_state = await plan_step(state=initial_state)
+    pprint.pp(updated_state)
 
 
 def main():
