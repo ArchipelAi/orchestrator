@@ -1,25 +1,21 @@
 ##debug code
 from typing import Type
 
-from orchestrator.models.base_agent import BaseAgent, T
+from orchestrator.agents.base_agent import BaseAgent, T
 
 
 class ExecutorAgent(BaseAgent):
     prompt_template = """
-    Find the solution to the last system output: {task_step}.
+    Find the solution to the last system output: {task}.
     Provide a clear solution that has no list of steps. But is a clear instruction.
-    Your answer should be geared towards solving the task at hand, provide a "solution:" object containing the designated answer.
-    If you cannot provide a clear solution, clearly demarcate the .json object as "steps:" and list each with bulletpoints.
-    If you cannot provide a solution, also provide a reason why you need substeps.
-
-    Either answer with a solution or with steps.
+    Your answer should be geared towards solving the task at hand.
 
     Here is the history of previous solutions: {agent_scratchpad}
 
     Use this history to inform your plan, ensuring you don't repeat steps that have already been completed.
     """
 
-    input_variables = ['agent_scratchpad', 'n_models', 'task_step']
+    input_variables = ['agent_scratchpad', 'n_models', 'task']
 
     def __init__(
         self,

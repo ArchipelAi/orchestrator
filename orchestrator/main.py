@@ -68,9 +68,17 @@ async def run_workflow(
 #     )
 
 
+# async def run_as_main():
+#     await run_workflow(
+#         'From which country is the trainer of the football team which won the 2006 World Cup.',
+#         n_models_planner=1,
+#         n_models_executor=1,
+#     )
+
+
 async def run_as_main():
     await run_workflow(
-        "Invent rules for a board game with a scoring system on a 1-step scale and play that game until you reach score 5. Respond with 'FINISH' once a player has reached score 5. Do not ever mention the word 'FINISH' unless a player has reached 5 points.",
+        "Invent rules for a board game with a scoring system on a 1-step scale. Play that game until you reach a score  of 5. Respond with 'FINISH' once a player has reached score 5. Do not ever mention the word 'FINISH' unless a player has reached 5 points.",
         n_models_planner=n_models_planner,
         n_models_executor=n_models_executor,
     )

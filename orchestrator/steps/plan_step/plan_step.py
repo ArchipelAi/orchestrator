@@ -5,7 +5,7 @@ import pprint
 from langchain_core.messages import HumanMessage
 from pydantic import ValidationError
 
-from orchestrator.models.planner_agent import PlannerAgent
+from orchestrator.agents.planner_agent import PlannerAgent
 from orchestrator.types.plan import Plan
 from orchestrator.types.plan_execute_state import State
 
@@ -22,7 +22,7 @@ async def plan_step(state: State) -> State:
             output_type=Plan,
             agent_scratchpad=', '.join(state.solutions_history),
             n_models=1,
-            system_task=state.system_task,
+            task=state.system_task,
         )
 
         updated_state = dataclasses.replace(state)

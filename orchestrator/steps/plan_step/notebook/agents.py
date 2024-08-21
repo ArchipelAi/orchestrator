@@ -10,7 +10,7 @@ with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 os.environ['OPENAI_API_KEY'] = config['openai']['api_key']
-#os.environ['TAVILY_API_KEY'] = config['tavily']['api_key']
+# os.environ['TAVILY_API_KEY'] = config['tavily']['api_key']
 
 
 # Initialize number of models
@@ -110,22 +110,23 @@ def update_request_parameters(best_response_body, num_step, response_outputs):
 # INITIALIZE SEQUENCE PLANNER AGENT
 
 import json
-
-from langchain.agents import create_openai_functions_agent
-from langchain_openai.chat_models import ChatOpenAI
 from typing import Any, Dict, List, Optional
 
-from langchain_core.prompts.prompt import PromptTemplate
-from langchain_openai import ChatOpenAI
-from pydantic import Field, BaseModel
-from orchestrator.types.base_model_config import BaseModelConfig
+from langchain.agents import create_openai_functions_agent
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts.prompt import PromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_openai.chat_models import ChatOpenAI
+from pydantic import BaseModel, Field
+
 
 class Solution(BaseModel):
     solution: Optional[Dict[str, Any]] = Field(None, description='solution details')
     steps: Optional[List[str]] = Field(None, description='steps to complete the task')
-    message: Optional[List[str]] = Field(None, description='general message or response')
+    message: Optional[List[str]] = Field(
+        None, description='general message or response'
+    )
 
     class Config:
         arbitrary_types_allowed = True
@@ -223,15 +224,21 @@ class SolutionAgent:
         self.output_parser = PydanticOutputParser(pydantic_object=Solution)
 
     def get_model(self):
-        return ChatOpenAI(model=self.model_name, temperature=self.temperature, model_kwargs={"top_p": self.top_p})
+        return ChatOpenAI(
+            model=self.model_name,
+            temperature=self.temperature,
+            model_kwargs={'top_p': self.top_p},
+        )
 
     async def ainvoke(self, inputs):
         model = self.get_model()
         formatted_prompt = self.prompt.format(**inputs)
         messages = [
-            SystemMessage(content="""You are one helpful agent in a multi-agent model of {n_models} agents.
-            It is your job to provide constructive responses so your team of agents can work with to solve the task at hand."""),
-            HumanMessage(content=formatted_prompt)
+            SystemMessage(
+                content="""You are one helpful agent in a multi-agent model of {n_models} agents.
+            It is your job to provide constructive responses so your team of agents can work with to solve the task at hand."""
+            ),
+            HumanMessage(content=formatted_prompt),
         ]
         response = await model.agenerate([messages])
         print(response)

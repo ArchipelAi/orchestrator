@@ -10,7 +10,7 @@ import numpy as np
 import openai
 from sentence_transformers import SentenceTransformer, util
 
-from orchestrator.agents.planner import oracle_repo as orep
+from orchestrator.utils import oracle_repo as orep
 
 # A Preload Functions
 

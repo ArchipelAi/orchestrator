@@ -1,12 +1,14 @@
 from langchain_core.runnables.graph import MermaidDrawMethod
 from langgraph.graph import START, Graph
 
-from orchestrator.agents.executor.executor import execute_step
-from orchestrator.agents.planner.planner import plan_step
+from orchestrator.steps.execute_step.execute_step import execute_step
+from orchestrator.steps.plan_step.plan_step import plan_step
 
 workflow = Graph()
+
 workflow.add_node('planner', plan_step)
 workflow.add_node('executor', execute_step)
+
 workflow.add_edge(START, 'planner')
 workflow.add_edge('planner', 'executor')
 workflow.add_edge('executor', 'executor')

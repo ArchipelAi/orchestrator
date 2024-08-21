@@ -9,6 +9,7 @@ readme = "README.md"
 planner = "orchestrator.agents.planner.planner:main"
 executor = "orchestrator.agents.executor.executor:main"
 app = "orchestrator.app:main"
+main = "orchestrator.main:main"
 
 [tool.poetry.plugins.dotenv]
 ignore = "false"
