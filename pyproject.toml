@@ -7,6 +7,9 @@ readme = "README.md"
 
 [tool.poetry.scripts]
 planner = "orchestrator.agents.planner.planner:main"
+executor = "orchestrator.agents.executor.executor:main"
+app = "orchestrator.app:main"
+main = "orchestrator.main:main"
 
 [tool.poetry.plugins.dotenv]
 ignore = "false"
@@ -24,6 +27,10 @@ chromadb = "^0.5.4"
 httpx = "^0.27.0"
 langchain-openai = "^0.1.15"
 pydantic = "^2.8.2"
+python-dotenv = "^1.0.1"
+torch = "^2.4.0"
+sentence-transformers = "^3.0.1"
+ipython = "^8.26.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.1"

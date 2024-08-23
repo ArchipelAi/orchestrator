@@ -1,9 +1,0 @@
-#INSERT YOUR API KEY HERE 
-
-# Initialize the OpenAI client
-openai:
-  api_key: ''
-  
-# Initialize the Tavily client
-tavily:
-  api_key: ''
