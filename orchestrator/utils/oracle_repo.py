@@ -484,7 +484,7 @@ def openai_request(
                         },
                     ],
                 )
-                print(response.choices[0].message.content)
+                # print(response.choices[0].message.content)
                 response_data = {
                     num_step: {
                         'model_type': 'gpt-4o',
@@ -517,7 +517,7 @@ def openai_request(
                         },
                     ],
                 )
-                print(response.choices[0].message.content)
+                # print(response.choices[0].message.content)
                 response_data = {
                     num_step: {
                         'model_type': 'gpt-4o',

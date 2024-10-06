@@ -20,7 +20,9 @@ class BaseAgent:
         top_p: float = 0.1,
     ):
         self.llm = ChatOpenAI(
-            model=model, temperature=temperature, model_kwargs={'top_p': top_p}
+            model=model,
+            temperature=temperature,
+            top_p=top_p,  # model_kwargs={'top_p': top_p}
         )
         self.prompt = PromptTemplate(
             template=prompt_template, input_variables=input_variables

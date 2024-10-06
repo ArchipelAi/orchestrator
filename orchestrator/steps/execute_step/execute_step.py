@@ -1,15 +1,15 @@
-import asyncio
 import dataclasses
-import pprint
 from typing import List, TypedDict
 
 from langchain.schema import HumanMessage
 from pydantic import ValidationError
 
 from orchestrator.agents.executor_agent import ExecutorAgent
+from orchestrator.agents.orchestrator_agent import Orchestrator
 from orchestrator.types.execute_result import ExecuteResult
 from orchestrator.types.plan_execute_state import BestResponseBackup, State
 from orchestrator.utils import oracle_repo as orep
+from orchestrator.utils.helper_functions import extract_list
 
 model = 'gpt-4o-mini'  # define model type
 
@@ -24,7 +24,25 @@ class Output(TypedDict):
 async def execute_step(
     state: State,
 ):
-    current_task = state.plan[state.current_step]  # calls the sequence of steps
+    # Check if the plan is empty
+    if not state.plan:
+        raise ValueError('The plan is empty. Cannot execute steps.')
+    if not (state.current_step >= len(state.plan)):
+        current_task = state.plan[
+            state.current_step
+        ]  # calls the current step, according to the sequence of steps
+    else:
+        print(
+            'The current step index is greater than the length of the plan. System is calculating next steps...'
+        )
+        orchestrator = Orchestrator()
+        system_message = f'system_task: {state.system_task}; solutions_history: {(state.solutions_history)}'
+        response = orchestrator.process_request(system_message=system_message)
+        response = extract_list(response)
+        for step in response:
+            state.plan.append(step)
+        # print(state.plan)
+        state.current_step -= 1  # Reset the model to include the last step added
 
     n_models_executor = state.n_models_executor
 
@@ -41,7 +59,7 @@ async def execute_step(
                 output_type=ExecuteResult,
                 agent_scratchpad=', '.join(state.solutions_history),
                 n_models=1,
-                task=current_task,
+                task=state.plan[state.current_step],
             )
 
             outputs.append(
@@ -77,22 +95,3 @@ async def execute_step(
         return updated_state
     except (Exception, ValidationError) as error:
         raise Exception(error) from error
-
-
-async def run_as_main():
-    input_message = 'How many players are allowed to play football simultaneously?'
-    initial_state = State(
-        messages=[HumanMessage(content=input_message)],
-        system_task=input_message,
-        plan=['How many players are allowed to play football simultaneously?'],
-    )
-    updated_state = await execute_step(state=initial_state)
-    pprint.pp(updated_state)
-
-
-def main():
-    asyncio.run(run_as_main())
-
-
-if __name__ == '__main__':
-    main()

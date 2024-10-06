@@ -16,7 +16,7 @@ ignore = "false"
 location = ".env"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 langgraph = "^0.1.7"
 langsmith = "^0.1.85"
 langchain = "^0.2.7"
@@ -31,6 +31,7 @@ python-dotenv = "^1.0.1"
 torch = "^2.4.0"
 sentence-transformers = "^3.0.1"
 ipython = "^8.26.0"
+groq = "^0.11.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.1"
