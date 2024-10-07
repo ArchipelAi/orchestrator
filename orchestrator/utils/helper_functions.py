@@ -85,3 +85,10 @@ def state_to_json(state) -> str:
     state_json = json.dumps(serializable_state, indent=4)
 
     return state_json
+
+
+def generate_code(self, step):
+    code_response = self.chain.run(step=step)
+    # Extract code between ```python and ```
+    code = code_response.split('```python')[1].split('```')[0].strip()
+    return code

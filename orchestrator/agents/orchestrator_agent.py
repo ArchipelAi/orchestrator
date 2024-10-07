@@ -19,7 +19,8 @@ class Orchestrator:
         Review this content and tell me if the task issued in the field "system_task" has been successfully completed. 
         If you can't find any evidence that it has been successfully completed, assume it has not. 
         If you find the tasks have not been completed, provide a list of next steps that will complete the given task. 
-        Provide these tasks as a simple list in the object "list" and in .json format with triple backticks.
+        Provide these tasks as a simple list in the object "list" and in .json format with triple backticks. 
+        If code is needed to execute any of these steps, indicate that code is needed by returning `code_needed = True` as part of the specific step description.
         Here is the CONTENT:
         {system_message}
         """
