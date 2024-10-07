@@ -1,4 +1,5 @@
 import dataclasses
+import os
 from typing import List, TypedDict
 
 from langchain.schema import HumanMessage
@@ -9,7 +10,7 @@ from orchestrator.agents.orchestrator_agent import Orchestrator
 from orchestrator.types.execute_result import ExecuteResult
 from orchestrator.types.plan_execute_state import BestResponseBackup, State
 from orchestrator.utils import oracle_repo as orep
-from orchestrator.utils.helper_functions import extract_list
+from orchestrator.utils.helper_functions import extract_list, save_state
 
 model = 'gpt-4o-mini'  # define model type
 
@@ -43,6 +44,12 @@ async def execute_step(
             state.plan.append(step)
         # print(state.plan)
         state.current_step -= 1  # Reset the model to include the last step added
+
+    # store current State status
+    # extract cwd and save the state object to a file
+    current_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    filepath = os.path.join(current_directory, 'state_log.txt')
+    save_state(state, filepath=filepath)
 
     n_models_executor = state.n_models_executor
 

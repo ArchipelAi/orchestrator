@@ -26,7 +26,7 @@ async def run_workflow(
     print('Initial state:', pprint.pp(initial_state))
 
     async for output in app.app.astream(initial_state):
-        print(output)
+        # print(output)
         if isinstance(output, dict) and any(value == END for value in output.values()):
             print('Task completed.')
             break
