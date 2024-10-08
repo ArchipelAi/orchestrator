@@ -6,16 +6,11 @@ from orchestrator.agents.base_agent import BaseAgent, T
 
 class CodingAgent(BaseAgent):
     prompt_template = """
-            You are a code assistant agent. Generate the necessary Python code to execute the following step:
+            You are a coding assistant. Provide code to implement the following step in Python:
 
             Step: {step}
 
-            Provide only the code, without any explanations.
-
-            Code:
-            ```python
-            # Your code here
-            ```
+            Provide the code only. Ensure the code is properly formatted so it can be directly executed in a python shell.
             """
     input_variables = ['step']
 
@@ -39,10 +34,11 @@ class CodingAgent(BaseAgent):
 
     async def generate_code(self, step):
         code_response = await self.chain.ainvoke({'step': step})
+
         print(code_response)
         # Extract code between ```python and ```
-        code = code_response.split('```python')[1].split('```')[0].strip()
-        return code
+        # code = code_response.split('```python')[1].split('```')[0].strip()
+        return code_response
 
     def set_chain(self, chain):
         self.chain = chain

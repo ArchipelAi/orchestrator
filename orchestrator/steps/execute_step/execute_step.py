@@ -3,9 +3,8 @@ import os
 from typing import List, TypedDict
 
 from langchain.schema import HumanMessage
-from langchain_experimental.utilities import PythonREPL
 
-from orchestrator.agents.coding_agent import CodingAgent
+from orchestrator.agents.code_assistant import CodeAssistant
 from orchestrator.agents.executor_agent import ExecutorAgent
 from orchestrator.agents.orchestrator_agent import Orchestrator
 from orchestrator.types.execute_result import ExecuteResult
@@ -13,7 +12,7 @@ from orchestrator.types.plan_execute_state import BestResponseBackup, State
 from orchestrator.utils import oracle_repo as orep
 from orchestrator.utils.helper_functions import extract_list, save_state
 
-model = 'gpt-3.5'  # define model type
+model = 'gpt-4o-mini'  # define model type
 
 
 class Output(TypedDict):
@@ -58,25 +57,30 @@ async def execute_step(
 
     if current_task and 'code_needed = true' in current_task.lower():
         print('Code is needed. Launching code agent.')
-        coding_agent = CodingAgent(output_schema=ExecuteResult, model=model)
-        code_response = await coding_agent.generate_code(step=current_task)
+        code_assistant = CodeAssistant()
 
-        python_tool = PythonREPL()
-
-        executor = ExecutorAgent(
-            output_schema=ExecuteResult,
-            model='gpt-4o-mini',
-            tools=[python_tool],
-            use_tools=True,
-        )
         try:
-            executor_code_output = executor.execute_code(code_response)
-            print(executor_code_output)
+            code_response = await code_assistant.execute_message(
+                {
+                    'role': 'user',
+                    'content': f"""
+                        You are a coding assistant. 
+                        Execute Python code to implement the following job towards solving "system_task: {state.system_task}":
+                        Job: {current_task}
+                        To implement the code and solve "system_task:", use the devised "solutions history: {state.solutions_history}" as reference. 
+                        Your output is the final result of your code. 
+                        If you find that your code results complete "system_task: {state.system_task}", append "FINISH" to your output message.
+                        """,
+                    'tools': [{'type': 'code_interpreter'}],
+                }
+            )
+            print('Code Assistant Response:', code_response)
+
             outputs.append(
                 {
                     'model_type': f'{model}',
                     'agent_type': 'llm',  # coding_llm
-                    'message': executor_code_output,
+                    'message': code_response,
                 }
             )
         except Exception as error:
