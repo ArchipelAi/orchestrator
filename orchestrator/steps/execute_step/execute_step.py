@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import sys
 from typing import List, TypedDict
 
 from langchain.schema import HumanMessage
@@ -68,7 +69,7 @@ async def execute_step(
                         Execute Python code to implement the following job towards solving "system_task: {state.system_task}":
                         Job: {current_task}
                         To implement the code and solve "system_task:", use the devised "solutions history: {state.solutions_history}" as reference. 
-                        Your output is the final result of your code. 
+                        Your output is the final result of your code.
                         If you find that your code results complete "system_task: {state.system_task}", append "FINISH" to your output message.
                         """,
                     'tools': [{'type': 'code_interpreter'}],
@@ -83,6 +84,13 @@ async def execute_step(
                     'message': code_response,
                 }
             )
+
+            if 'finish' in outputs[0]['message'].lower():
+                print(
+                    f'The task has been completed. The final output is: {code_response}'
+                )
+                sys.exit(0)
+
         except Exception as error:
             raise Exception(f'Error during code execution: {error}') from error
     else:
